@@ -17,11 +17,31 @@
 
     <main>
       <section id="name-panel" class="panel active">
-        <p class="hint">Finds playlists whose name matches <strong>exactly</strong>, case-sensitive. Spotify's own
-          search fuzzy-matches; this filters that noise out. Searches every page Spotify allows (offset up to its
-          hard 1000 limit).</p>
-        <form id="name-form" class="row">
-          <input id="name-query" type="text" placeholder="My Summer Mix 2024" autocomplete="off" required />
+        <p class="hint">Searches every page Spotify allows (offset up to its hard 1000 limit).</p>
+        <form id="name-form" class="search-form" data-prefix="name">
+          <div class="field-row">
+            <label for="name-title">Title</label>
+            <input id="name-title" name="title" type="text" placeholder="My Summer Mix 2024" autocomplete="off" required />
+          </div>
+          <div class="field-row">
+            <label for="name-keywords">Keywords <span class="optional">(artist, song names, etc. — optional)</span></label>
+            <input id="name-keywords" name="keywords" type="text" placeholder="Radiohead" autocomplete="off" />
+          </div>
+          <label class="checkbox-row">
+            <input id="name-exact" name="exact" type="checkbox" checked />
+            Exact wording (case-sensitive title match)
+          </label>
+          <div class="field-row owner-filter">
+            <label for="name-owner-preset">Playlist maker</label>
+            <select id="name-owner-preset" name="ownerPreset">
+              <option value="">Any</option>
+              <option value="^[^\s]+\s[^\s]+$">First Last (e.g. "John Smith")</option>
+              <option value="^[^\s]+$">First name only (e.g. "John")</option>
+              <option value="^[^,]+,\s*[^\s]+$">Last, First (e.g. "Smith, John")</option>
+              <option value="custom">Custom regex&hellip;</option>
+            </select>
+            <input id="name-owner-custom" name="ownerCustom" type="text" placeholder="regex" class="owner-custom" hidden />
+          </div>
           <button type="submit">Search</button>
         </form>
         <p id="name-status" class="status"></p>
@@ -29,9 +49,8 @@
       </section>
 
       <section id="image-panel" class="panel">
-        <p class="hint">Upload or paste a cover-art screenshot, crop to just the artwork, add a few search keywords,
-          and results are ranked by visual similarity (perceptual hash) to your crop &mdash; best matches first,
-          nothing excluded.</p>
+        <p class="hint">Upload or paste a cover-art screenshot, crop to just the artwork, and results are ranked by
+          visual similarity (perceptual hash) to your crop &mdash; best matches first, nothing excluded.</p>
 
         <div class="crop-area">
           <input id="image-file" type="file" accept="image/*" />
@@ -41,8 +60,30 @@
           </div>
         </div>
 
-        <form id="image-form" class="row">
-          <input id="image-query" type="text" placeholder="search keywords (e.g. artist or playlist name)" autocomplete="off" required />
+        <form id="image-form" class="search-form" data-prefix="image">
+          <div class="field-row">
+            <label for="image-title">Title</label>
+            <input id="image-title" name="title" type="text" placeholder="My Summer Mix 2024" autocomplete="off" required />
+          </div>
+          <div class="field-row">
+            <label for="image-keywords">Keywords <span class="optional">(artist, song names, etc. — optional)</span></label>
+            <input id="image-keywords" name="keywords" type="text" placeholder="Radiohead" autocomplete="off" />
+          </div>
+          <label class="checkbox-row">
+            <input id="image-exact" name="exact" type="checkbox" />
+            Exact wording (case-sensitive title match)
+          </label>
+          <div class="field-row owner-filter">
+            <label for="image-owner-preset">Playlist maker</label>
+            <select id="image-owner-preset" name="ownerPreset">
+              <option value="">Any</option>
+              <option value="^[^\s]+\s[^\s]+$">First Last (e.g. "John Smith")</option>
+              <option value="^[^\s]+$">First name only (e.g. "John")</option>
+              <option value="^[^,]+,\s*[^\s]+$">Last, First (e.g. "Smith, John")</option>
+              <option value="custom">Custom regex&hellip;</option>
+            </select>
+            <input id="image-owner-custom" name="ownerCustom" type="text" placeholder="regex" class="owner-custom" hidden />
+          </div>
           <button type="submit" id="image-submit" disabled>Search</button>
         </form>
         <p id="image-status" class="status"></p>

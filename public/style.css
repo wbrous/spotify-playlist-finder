@@ -74,11 +74,61 @@ main {
   margin: 8px 0 0;
 }
 
-.row {
+.search-form {
   display: flex;
-  gap: 10px;
+  flex-direction: column;
+  gap: 12px;
   margin: 16px 0;
+  max-width: 480px;
 }
+
+.field-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-row label {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.field-row .optional {
+  color: #6a6a6a;
+  font-weight: 400;
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.checkbox-row input {
+  accent-color: var(--green);
+}
+
+.owner-filter select,
+.owner-filter .owner-custom {
+  background: #1a1a1a;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.owner-filter .owner-custom {
+  margin-top: 6px;
+}
+
+.search-form button {
+  align-self: flex-start;
+}
+
 
 input[type="text"] {
   flex: 1;

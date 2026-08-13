@@ -137,62 +137,59 @@ export class SpotifyClient {
   }
 
   /**
-   * Fetches every playlist page Spotify will give us for `query` and returns
-   * only the hits whose name is an exact, case-sensitive match.
+   * Searches playlists by title (optionally quoted for exact-phrase matching)
+   * plus free-text keywords (artist/song names etc.), then filters locally.
+   *
+   * - `exactTitle: true` keeps only hits whose name is a case-sensitive exact
+   *   match for `title`. Otherwise every hit Spotify returns for the combined
+   *   query is kept (still ranked/ordered as Spotify returns them).
+   * - `ownerPattern`, if given, filters to hits whose owner display name
+   *   matches the regex.
+   * - Paginates in pages of `SEARCH_PAGE_SIZE` until Spotify has nothing left
+   *   or `maxResults` is reached, up to Spotify's hard `SEARCH_MAX_OFFSET`
+   *   ceiling (offset + limit <= 1000 — a documented API limit, not ours).
    */
-  async searchExact(query: string, onProgress?: (fetched: number) => void): Promise<PlaylistHit[]> {
-    const exact: PlaylistHit[] = [];
-    let offset = 0;
-    let fetched = 0;
+  async search(opts: {
+    title: string;
+    keywords?: string;
+    exactTitle?: boolean;
+    ownerPattern?: RegExp;
+    maxResults?: number;
+    onProgress?: (fetched: number) => void;
+  }): Promise<PlaylistHit[]> {
+    const title = opts.title.trim();
+    const keywords = (opts.keywords ?? "").trim();
+    const exactTitle = opts.exactTitle ?? false;
+    const maxResults = opts.maxResults ?? Infinity;
 
     // Spotify's search syntax treats a quoted string as a phrase match, which
     // narrows results to that phrase instead of any-word-matches-anywhere.
     // Still not guaranteed case-sensitive-exact, so we keep filtering locally.
-    const phraseQuery = `"${query.replace(/"/g, "")}"`;
+    const titleTerm = title ? (exactTitle ? `"${title.replace(/"/g, "")}"` : title) : "";
+    const q = [titleTerm, keywords].filter(Boolean).join(" ").trim();
+    if (!q) return [];
 
-    while (offset < SEARCH_MAX_OFFSET) {
-      const limit = Math.min(SEARCH_PAGE_SIZE, SEARCH_MAX_OFFSET - offset);
-      const json = await this.request("/search", { q: phraseQuery, type: "playlist", limit: String(limit), offset: String(offset) });
-
-      const items = json.playlists?.items ?? [];
-      if (items.length === 0) break;
-
-      for (const raw of items) {
-        fetched++;
-        if (raw && raw.name === query) exact.push(toPlaylistHit(raw));
-      }
-      onProgress?.(fetched);
-
-      const total = json.playlists?.total ?? 0;
-      offset += items.length;
-      if (offset >= total) break;
-    }
-
-    return exact;
-  }
-
-  /**
-   * Broad candidate search used to feed the image-similarity ranker.
-   * Not filtered by exact name; caller re-ranks by cover confidence.
-   */
-  async searchBroad(query: string, maxResults = 100, onProgress?: (fetched: number) => void): Promise<PlaylistHit[]> {
     const results: PlaylistHit[] = [];
     let offset = 0;
     let fetched = 0;
 
     while (offset < SEARCH_MAX_OFFSET && results.length < maxResults) {
-      const limit = Math.min(SEARCH_PAGE_SIZE, SEARCH_MAX_OFFSET - offset, maxResults - results.length);
-      if (limit <= 0) break;
-      const json = await this.request("/search", { q: query, type: "playlist", limit: String(limit), offset: String(offset) });
+      const limit = Math.min(SEARCH_PAGE_SIZE, SEARCH_MAX_OFFSET - offset);
+      const json = await this.request("/search", { q, type: "playlist", limit: String(limit), offset: String(offset) });
 
       const items = json.playlists?.items ?? [];
       if (items.length === 0) break;
 
       for (const raw of items) {
         fetched++;
-        if (raw) results.push(toPlaylistHit(raw));
+        if (!raw) continue;
+        if (exactTitle && raw.name !== title) continue;
+        const hit = toPlaylistHit(raw);
+        if (opts.ownerPattern && !opts.ownerPattern.test(hit.ownerName)) continue;
+        results.push(hit);
+        if (results.length >= maxResults) break;
       }
-      onProgress?.(fetched);
+      opts.onProgress?.(fetched);
 
       const total = json.playlists?.total ?? 0;
       offset += items.length;

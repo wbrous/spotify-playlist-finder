@@ -41,6 +41,32 @@ function renderResults(container, hits, { showConfidence } = {}) {
   }
 }
 
+// --- Owner-preset <select> wiring (both panes) ---
+// Selecting "custom" reveals a free-text regex input; any preset fills that
+// same hidden input with its pattern so form submission only ever reads one field.
+function wireOwnerPreset(prefix) {
+  const select = document.getElementById(`${prefix}-owner-preset`);
+  const custom = document.getElementById(`${prefix}-owner-custom`);
+  select.addEventListener("change", () => {
+    if (select.value === "custom") {
+      custom.hidden = false;
+      custom.value = "";
+      custom.focus();
+    } else {
+      custom.hidden = true;
+      custom.value = select.value;
+    }
+  });
+}
+wireOwnerPreset("name");
+wireOwnerPreset("image");
+
+function ownerPatternFor(prefix) {
+  const select = document.getElementById(`${prefix}-owner-preset`);
+  const custom = document.getElementById(`${prefix}-owner-custom`);
+  return select.value === "custom" ? custom.value.trim() : select.value;
+}
+
 // --- Name search ---
 const nameForm = document.getElementById("name-form");
 const nameStatus = document.getElementById("name-status");
@@ -48,18 +74,22 @@ const nameResults = document.getElementById("name-results");
 
 nameForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const query = document.getElementById("name-query").value;
-  nameStatus.textContent = `Searching for exact matches of "${query}"...`;
+  const title = document.getElementById("name-title").value;
+  const keywords = document.getElementById("name-keywords").value;
+  const exact = document.getElementById("name-exact").checked;
+  const ownerPattern = ownerPatternFor("name");
+
+  nameStatus.textContent = `Searching for "${title}"...`;
   nameResults.innerHTML = "";
   try {
-    const res = await fetch("/api/search-exact", {
+    const res = await fetch("/api/search-name", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query }),
+      body: JSON.stringify({ title, keywords, exact: String(exact), ownerPattern }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-    nameStatus.textContent = `${data.hits.length} exact match${data.hits.length === 1 ? "" : "es"} for "${query}".`;
+    nameStatus.textContent = `${data.hits.length} match${data.hits.length === 1 ? "" : "es"} for "${title}".`;
     renderResults(nameResults, data.hits);
   } catch (err) {
     nameStatus.textContent = `Search failed: ${err.message}`;
@@ -172,18 +202,25 @@ function extractCropBlob() {
 
 imageForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const query = document.getElementById("image-query").value;
+  const title = document.getElementById("image-title").value;
+  const keywords = document.getElementById("image-keywords").value;
+  const exact = document.getElementById("image-exact").checked;
+  const ownerPattern = ownerPatternFor("image");
+
   imageStatus.textContent = "Cropping and searching...";
   imageResults.innerHTML = "";
   try {
     const blob = await extractCropBlob();
     const form = new FormData();
     form.append("image", blob, "crop.png");
-    form.append("query", query);
+    form.append("title", title);
+    form.append("keywords", keywords);
+    form.append("exact", String(exact));
+    form.append("ownerPattern", ownerPattern);
     const res = await fetch("/api/search-image", { method: "POST", body: form });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-    imageStatus.textContent = `${data.hits.length} candidate${data.hits.length === 1 ? "" : "s"} ranked by cover-art similarity for "${query}".`;
+    imageStatus.textContent = `${data.hits.length} candidate${data.hits.length === 1 ? "" : "s"} ranked by cover-art similarity for "${title}".`;
     renderResults(imageResults, data.hits, { showConfidence: true });
   } catch (err) {
     imageStatus.textContent = `Search failed: ${err.message}`;

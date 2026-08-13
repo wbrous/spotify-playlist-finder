@@ -25,13 +25,43 @@ function json(data: unknown, init?: ResponseInit): Response {
   });
 }
 
-async function rankByCover(query: string, targetHash: ImageHash): Promise<RankedPlaylistHit[]> {
-  const [broad, exact] = await Promise.all([spotify.searchBroad(query, 100), spotify.searchExact(query)]);
+function parseSearchParams(
+  get: (key: string) => string | null,
+): { title: string; keywords: string; exactTitle: boolean; ownerPattern?: RegExp } | { error: string } {
+  const title = (get("title") ?? "").trim();
+  if (!title) return { error: "title is required" };
+  const keywords = (get("keywords") ?? "").trim();
+  const exactTitle = get("exact") === "true";
 
-  const byId = new Map(broad.map((hit) => [hit.id, hit]));
-  for (const hit of exact) byId.set(hit.id, hit); // exact-name hits always included, even if broad search missed them
-  const candidates = [...byId.values()];
+  const ownerPatternSource = (get("ownerPattern") ?? "").trim();
+  let ownerPattern: RegExp | undefined;
+  if (ownerPatternSource) {
+    try {
+      ownerPattern = new RegExp(ownerPatternSource, "i");
+    } catch {
+      return { error: `Invalid owner-name regex: ${ownerPatternSource}` };
+    }
+  }
 
+  return { title, keywords, exactTitle, ownerPattern };
+}
+
+function jsonGetter(body: Record<string, unknown>): (key: string) => string | null {
+  return (key) => (typeof body[key] === "string" ? (body[key] as string) : null);
+}
+
+function formGetter(form: { get(key: string): unknown }): (key: string) => string | null {
+  return (key) => {
+    const value = form.get(key);
+    return typeof value === "string" ? value : null;
+  };
+}
+
+async function rankByCover(
+  opts: { title: string; keywords: string; exactTitle: boolean; ownerPattern?: RegExp },
+  targetHash: ImageHash,
+): Promise<RankedPlaylistHit[]> {
+  const candidates = await spotify.search({ ...opts, maxResults: 100 });
   const ranked: RankedPlaylistHit[] = [];
 
   for (const hit of candidates) {
@@ -80,12 +110,12 @@ Bun.serve({
       // fall through to 404 below for unknown API GETs
     }
 
-    if (req.method === "POST" && url.pathname === "/api/search-exact") {
+    if (req.method === "POST" && url.pathname === "/api/search-name") {
       try {
-        const body = (await req.json()) as { query?: unknown };
-        const query = typeof body.query === "string" ? body.query.trim() : "";
-        if (!query) return json({ error: "query is required" }, { status: 400 });
-        const hits = await spotify.searchExact(query);
+        const body = (await req.json()) as Record<string, unknown>;
+        const parsed = parseSearchParams(jsonGetter(body));
+        if ("error" in parsed) return json({ error: parsed.error }, { status: 400 });
+        const hits = await spotify.search(parsed);
         return json({ hits });
       } catch (err) {
         return json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
@@ -96,12 +126,12 @@ Bun.serve({
       try {
         const form = await req.formData();
         const file = form.get("image");
-        const query = String(form.get("query") ?? "").trim();
         if (!(file instanceof File)) return json({ error: "image file is required" }, { status: 400 });
-        if (!query) return json({ error: "query is required" }, { status: 400 });
+        const parsed = parseSearchParams(formGetter(form));
+        if ("error" in parsed) return json({ error: parsed.error }, { status: 400 });
 
         const targetHash = await hashUpload(file);
-        const hits = await rankByCover(query, targetHash);
+        const hits = await rankByCover(parsed, targetHash);
         return json({ hits });
       } catch (err) {
         return json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
