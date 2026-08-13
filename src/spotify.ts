@@ -174,12 +174,20 @@ export class SpotifyClient {
     let scanned = 0;
     let reportedTotal = 0;
 
+    // None of Spotify's pagination signals for playlist search have proven
+    // trustworthy: `total` frequently under-reports, and pages have been
+    // observed returning fewer items than requested mid-stream (not just at
+    // the true end) — with real results still sitting at higher offsets.
+    // So we don't trust any early-stop signal at all: always walk every
+    // offset up to the API's hard ceiling, advancing by the limit we
+    // actually requested each time. This is bounded to at most
+    // SEARCH_MAX_OFFSET / SEARCH_PAGE_SIZE (20) requests, so exhaustiveness
+    // costs nothing meaningful even for queries with few real results.
     while (offset < SEARCH_MAX_OFFSET && results.length < maxResults) {
       const limit = Math.min(SEARCH_PAGE_SIZE, SEARCH_MAX_OFFSET - offset);
       const json = await this.request("/search", { q, type: "playlist", limit: String(limit), offset: String(offset) });
 
       const items = json.playlists?.items ?? [];
-      if (items.length === 0) break;
       reportedTotal = json.playlists?.total ?? reportedTotal;
 
       for (const raw of items) {
@@ -193,12 +201,6 @@ export class SpotifyClient {
       }
       opts.onProgress?.(scanned);
 
-      // Spotify's reported `total` for playlist search is unreliable, and a
-      // short page (fewer items than requested) is *also* not a trustworthy
-      // end-of-results signal — Spotify can return a partial page mid-stream
-      // with more results still available further out. So we always advance
-      // by the limit we actually requested (not by how many items came back)
-      // and only stop once a page comes back completely empty.
       offset += limit;
     }
 
