@@ -26,7 +26,12 @@ function json(data: unknown, init?: ResponseInit): Response {
 }
 
 async function rankByCover(query: string, targetHash: ImageHash): Promise<RankedPlaylistHit[]> {
-  const candidates = await spotify.searchBroad(query, 100);
+  const [broad, exact] = await Promise.all([spotify.searchBroad(query, 100), spotify.searchExact(query)]);
+
+  const byId = new Map(broad.map((hit) => [hit.id, hit]));
+  for (const hit of exact) byId.set(hit.id, hit); // exact-name hits always included, even if broad search missed them
+  const candidates = [...byId.values()];
+
   const ranked: RankedPlaylistHit[] = [];
 
   for (const hit of candidates) {
