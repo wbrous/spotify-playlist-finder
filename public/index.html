@@ -17,7 +17,7 @@
 
     <main>
       <section id="name-panel" class="panel active">
-        <p class="hint">Searches every page Spotify allows (offset up to its hard 1000 limit).</p>
+        <p class="hint">Exhaustively walks every offset Spotify's search allows (up to its hard 1000 limit) &mdash; but Spotify's own playlist search index is known to be incomplete server-side (documented, unfixable client-side: <a href="https://github.com/spotify/web-api/issues/1096" target="_blank" rel="noopener noreferrer">spotify/web-api#1096</a>). For a common title it will likely surface far fewer real playlists than actually exist.</p>
         <form id="name-form" class="search-form" data-prefix="name">
           <div class="field-row">
             <label for="name-title">Title</label>

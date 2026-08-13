@@ -7,7 +7,9 @@ A small [Bun](https://bun.sh) web app for finding Spotify playlists two ways: by
 - **Exact wording** checkbox — when checked, only playlists whose name is a case-sensitive exact match for Title are kept (Spotify's own search fuzzy-matches otherwise). Unchecked, every playlist Spotify returns for Title + Keywords is kept, ordered as Spotify ranks them.
 - **Playlist maker** — filters results to owner display names matching a regex. Pick a preset (`First Last`, `First name only`, `Last, First`) or choose *Custom regex&hellip;* to type your own pattern (matched case-insensitively).
 
-Search pages through every result Spotify's search endpoint allows (in batches of 50, up to the API's hard `offset + limit ≤ 1000` ceiling — there's no way to search further than that via the public search endpoint).
+Search pages through every offset Spotify's search endpoint allows (in batches of 50, up to the API's hard `offset + limit ≤ 1000` ceiling — there's no way to search further than that via the public search endpoint, and this app never trusts Spotify's early-stop signals, so it always walks the full window).
+
+**Known limitation (Spotify's, not this app's):** Spotify's `/v1/search?type=playlist` index is documented and widely reported to be incomplete — it does not reliably surface every public playlist matching a query, even with correct exhaustive pagination ([spotify/web-api#1096](https://github.com/spotify/web-api/issues/1096), multiple Spotify community threads). For a common title, expect the API to return only a fraction of the playlists that actually exist. There is no client-side workaround; this is a Spotify-side search-quality limitation.
 
 **Image search** additionally lets you upload or paste a cover image or a screenshot, crop the cover art out of it with the in-browser crop tool, and ranks the Title/Keywords/owner-filtered candidates by visual similarity to your crop (a perceptual hash / confidence score), sorted best match first. Low-confidence matches are still shown, just ranked near the bottom — nothing is silently excluded.
 

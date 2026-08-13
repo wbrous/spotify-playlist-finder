@@ -74,6 +74,10 @@ main {
   margin: 8px 0 0;
 }
 
+.hint a {
+  color: var(--green);
+}
+
 .search-form {
   display: flex;
   flex-direction: column;
