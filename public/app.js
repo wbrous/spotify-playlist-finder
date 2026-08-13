@@ -89,7 +89,7 @@ nameForm.addEventListener("submit", async (e) => {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-    nameStatus.textContent = `${data.hits.length} match${data.hits.length === 1 ? "" : "es"} for "${title}" — combed through ${data.scanned} playlist${data.scanned === 1 ? "" : "s"} Spotify returned (it reported ~${data.reportedTotal} total for this query).`;
+    nameStatus.textContent = `${data.hits.length} match${data.hits.length === 1 ? "" : "es"} for "${title}" — scanned all ${data.scanned} playlists Spotify's search returned across every page (offset 0-1000). Spotify's own "total" count for this query is known-unreliable, so it's ignored for scanning; it happened to report ~${data.reportedTotal}.`;
     renderResults(nameResults, data.hits);
   } catch (err) {
     nameStatus.textContent = `Search failed: ${err.message}`;
@@ -220,7 +220,7 @@ imageForm.addEventListener("submit", async (e) => {
     const res = await fetch("/api/search-image", { method: "POST", body: form });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-    imageStatus.textContent = `${data.hits.length} candidate${data.hits.length === 1 ? "" : "s"} ranked by cover-art similarity for "${title}" — combed through ${data.scanned} playlist${data.scanned === 1 ? "" : "s"} Spotify returned (it reported ~${data.reportedTotal} total; ${data.matched} passed your filters and were cover-art ranked).`;
+    imageStatus.textContent = `${data.hits.length} candidate${data.hits.length === 1 ? "" : "s"} ranked by cover-art similarity for "${title}" — scanned all ${data.scanned} playlists Spotify's search returned across every page (offset 0-1000), of which ${data.matched} passed your Title/Keywords/Playlist-maker filters and got cover-art ranked. Spotify's own "total" count for this query is known-unreliable and ignored for scanning; it happened to report ~${data.reportedTotal}.`;
     renderResults(imageResults, data.hits, { showConfidence: true });
   } catch (err) {
     imageStatus.textContent = `Search failed: ${err.message}`;
