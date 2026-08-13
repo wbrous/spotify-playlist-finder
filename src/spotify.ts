@@ -156,7 +156,7 @@ export class SpotifyClient {
     ownerPattern?: RegExp;
     maxResults?: number;
     onProgress?: (fetched: number) => void;
-  }): Promise<PlaylistHit[]> {
+  }): Promise<{ hits: PlaylistHit[]; scanned: number; reportedTotal: number }> {
     const title = opts.title.trim();
     const keywords = (opts.keywords ?? "").trim();
     const exactTitle = opts.exactTitle ?? false;
@@ -167,11 +167,12 @@ export class SpotifyClient {
     // Still not guaranteed case-sensitive-exact, so we keep filtering locally.
     const titleTerm = title ? (exactTitle ? `"${title.replace(/"/g, "")}"` : title) : "";
     const q = [titleTerm, keywords].filter(Boolean).join(" ").trim();
-    if (!q) return [];
+    if (!q) return { hits: [], scanned: 0, reportedTotal: 0 };
 
     const results: PlaylistHit[] = [];
     let offset = 0;
-    let fetched = 0;
+    let scanned = 0;
+    let reportedTotal = 0;
 
     while (offset < SEARCH_MAX_OFFSET && results.length < maxResults) {
       const limit = Math.min(SEARCH_PAGE_SIZE, SEARCH_MAX_OFFSET - offset);
@@ -179,9 +180,10 @@ export class SpotifyClient {
 
       const items = json.playlists?.items ?? [];
       if (items.length === 0) break;
+      reportedTotal = json.playlists?.total ?? reportedTotal;
 
       for (const raw of items) {
-        fetched++;
+        scanned++;
         if (!raw) continue;
         if (exactTitle && raw.name !== title) continue;
         const hit = toPlaylistHit(raw);
@@ -189,14 +191,16 @@ export class SpotifyClient {
         results.push(hit);
         if (results.length >= maxResults) break;
       }
-      opts.onProgress?.(fetched);
+      opts.onProgress?.(scanned);
 
-      const total = json.playlists?.total ?? 0;
       offset += items.length;
-      if (offset >= total) break;
+      // Spotify's reported `total` for playlist search is known to be
+      // unreliable (frequently under-reports). A short page — fewer items
+      // than requested — is the only trustworthy end-of-results signal.
+      if (items.length < limit) break;
     }
 
-    return results;
+    return { hits: results, scanned, reportedTotal };
   }
 
   /** Fallback for playlists whose search hit carried no images. */

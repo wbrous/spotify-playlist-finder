@@ -60,8 +60,8 @@ function formGetter(form: { get(key: string): unknown }): (key: string) => strin
 async function rankByCover(
   opts: { title: string; keywords: string; exactTitle: boolean; ownerPattern?: RegExp },
   targetHash: ImageHash,
-): Promise<RankedPlaylistHit[]> {
-  const candidates = await spotify.search({ ...opts, maxResults: 100 });
+): Promise<{ hits: RankedPlaylistHit[]; scanned: number; reportedTotal: number; matched: number }> {
+  const { hits: candidates, scanned, reportedTotal } = await spotify.search({ ...opts, maxResults: 100 });
   const ranked: RankedPlaylistHit[] = [];
 
   for (const hit of candidates) {
@@ -77,7 +77,7 @@ async function rankByCover(
   }
 
   ranked.sort((a, b) => b.confidence - a.confidence);
-  return ranked;
+  return { hits: ranked, scanned, reportedTotal, matched: candidates.length };
 }
 
 async function hashUpload(file: File): Promise<ImageHash> {
@@ -115,8 +115,8 @@ Bun.serve({
         const body = (await req.json()) as Record<string, unknown>;
         const parsed = parseSearchParams(jsonGetter(body));
         if ("error" in parsed) return json({ error: parsed.error }, { status: 400 });
-        const hits = await spotify.search(parsed);
-        return json({ hits });
+        const { hits, scanned, reportedTotal } = await spotify.search(parsed);
+        return json({ hits, scanned, reportedTotal });
       } catch (err) {
         return json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
       }
@@ -131,8 +131,8 @@ Bun.serve({
         if ("error" in parsed) return json({ error: parsed.error }, { status: 400 });
 
         const targetHash = await hashUpload(file);
-        const hits = await rankByCover(parsed, targetHash);
-        return json({ hits });
+        const { hits, scanned, reportedTotal, matched } = await rankByCover(parsed, targetHash);
+        return json({ hits, scanned, reportedTotal, matched });
       } catch (err) {
         return json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
       }
