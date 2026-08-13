@@ -193,11 +193,13 @@ export class SpotifyClient {
       }
       opts.onProgress?.(scanned);
 
-      offset += items.length;
-      // Spotify's reported `total` for playlist search is known to be
-      // unreliable (frequently under-reports). A short page — fewer items
-      // than requested — is the only trustworthy end-of-results signal.
-      if (items.length < limit) break;
+      // Spotify's reported `total` for playlist search is unreliable, and a
+      // short page (fewer items than requested) is *also* not a trustworthy
+      // end-of-results signal — Spotify can return a partial page mid-stream
+      // with more results still available further out. So we always advance
+      // by the limit we actually requested (not by how many items came back)
+      // and only stop once a page comes back completely empty.
+      offset += limit;
     }
 
     return { hits: results, scanned, reportedTotal };
