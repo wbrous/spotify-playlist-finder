@@ -145,9 +145,14 @@ export class SpotifyClient {
     let offset = 0;
     let fetched = 0;
 
+    // Spotify's search syntax treats a quoted string as a phrase match, which
+    // narrows results to that phrase instead of any-word-matches-anywhere.
+    // Still not guaranteed case-sensitive-exact, so we keep filtering locally.
+    const phraseQuery = `"${query.replace(/"/g, "")}"`;
+
     while (offset < SEARCH_MAX_OFFSET) {
       const limit = Math.min(SEARCH_PAGE_SIZE, SEARCH_MAX_OFFSET - offset);
-      const json = await this.request("/search", { q: query, type: "playlist", limit: String(limit), offset: String(offset) });
+      const json = await this.request("/search", { q: phraseQuery, type: "playlist", limit: String(limit), offset: String(offset) });
 
       const items = json.playlists?.items ?? [];
       if (items.length === 0) break;
