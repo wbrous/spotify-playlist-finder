@@ -1,10 +1,10 @@
 {
   "name": "spotify-playlist-finder",
-  "module": "src/index.ts",
+  "module": "src/server.ts",
   "type": "module",
   "private": true,
   "scripts": {
-    "start": "bun run src/index.ts",
+    "start": "bun run src/server.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
