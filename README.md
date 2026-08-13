@@ -21,6 +21,8 @@ Search pages through every offset Spotify's search endpoint allows (in batches o
 4. `bun start`
 5. Open `http://localhost:3000` (override the port with `PORT=xxxx bun start`).
 
+During development, `bun run dev` restarts the server automatically on file changes.
+
 ## Usage
 
 ### Name search
